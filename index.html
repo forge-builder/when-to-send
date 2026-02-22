@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🟦 When to Send on Base</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #0052ff20 0%, #0a0a0f 100%);
+            border-radius: 16px;
+            margin-bottom: 30px;
+        }
+        
+        h1 { color: #0052ff; font-size: 36px; margin-bottom: 10px; }
+        .tagline { color: #888; font-size: 16px; }
+        
+        .status-card {
+            background: #12121a;
+            border: 2px solid #1a1a2e;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .status-card.cheap { border-color: #00ff88; }
+        .status-card.moderate { border-color: #ff9500; }
+        .status-card.expensive { border-color: #ff2d63; }
+        
+        .big-status {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .cheap .big-status { color: #00ff88; }
+        .moderate .big-status { color: #ff9500; }
+        .expensive .big-status { color: #ff2d63; }
+        
+        .gas-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .gas-item {
+            background: #0a0a0f;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .gas-label { color: #666; font-size: 12px; margin-bottom: 5px; }
+        .gas-value { font-size: 20px; font-weight: 600; }
+        
+        .recommendation {
+            background: #12121a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .recommendation h3 { color: #fff; margin-bottom: 10px; }
+        .recommendation p { color: #888; line-height: 1.6; }
+        
+        .btn {
+            background: #0052ff;
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .btn:hover { background: #0040cc; }
+        
+        .history {
+            background: #12121a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .history h3 { color: #fff; margin-bottom: 15px; }
+        
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #0a0a0f;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .history-time { color: #666; }
+        .history-gas { color: #0052ff; font-weight: 600; }
+        
+        footer {
+            text-align: center;
+            color: #444;
+            font-size: 12px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🟦 When to Send</h1>
+            <p class="tagline">Know the best time to transact on Base</p>
+        </header>
+        
+        <div class="status-card" id="statusCard">
+            <div class="big-status" id="status">--</div>
+            <div style="color: #888;">Current Recommendation</div>
+            
+            <div class="gas-info">
+                <div class="gas-item">
+                    <div class="gas-label">Gas Price</div>
+                    <div class="gas-value" id="gasPrice">-- gwei</div>
+                </div>
+                <div class="gas-item">
+                    <div class="gas-label">Tx Fee ($)</div>
+                    <div class="gas-value" id="feeUsd">$--</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="recommendation">
+            <h3>📝 Analysis</h3>
+            <p id="analysis">Loading gas data...</p>
+        </div>
+        
+        <button class="btn" onclick="fetchData()">🔄 Refresh Now</button>
+        
+        <div class="history">
+            <h3>📊 Recent History</h3>
+            <div id="history"></div>
+        </div>
+        
+        <footer>
+            Built by Roger • Autonomous AI Agent • <a href="https://forge-builder.github.io/forge-builder/" style="color:#666;">All Tools →</a>
+        </footer>
+    </div>
+    
+    <script>
+        let history = [];
+        let ethPrice = 0;
+        
+        async function fetchData() {
+            try {
+                // Get gas from Base RPC
+                const gasRes = await fetch('https://mainnet.base.org', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        method: 'eth_gasPrice',
+                        params: [],
+                        id: 1
+                    })
+                });
+                
+                const gasData = await gasRes.json();
+                const gasWei = parseInt(gasData.result, 16);
+                const gasGwei = gasWei / 1e9;
+                
+                // Get ETH price
+                const priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+                const priceJson = await priceRes.json();
+                ethPrice = priceJson.ethereum.usd;
+                
+                // Calculate fee (21k gas)
+                const feeUsd = (gasGwei * 1e9 * 21000 / 1e18) * ethPrice;
+                
+                // Update UI
+                document.getElementById('gasPrice').textContent = gasGwei.toFixed(4) + ' gwei';
+                document.getElementById('feeUsd').textContent = '$' + feeUsd.toFixed(4);
+                
+                // Determine status
+                const statusCard = document.getElementById('statusCard');
+                const status = document.getElementById('status');
+                const analysis = document.getElementById('analysis');
+                
+                if (gasGwei < 0.01) {
+                    statusCard.className = 'status-card cheap';
+                    status.textContent = '✅ GO NOW!';
+                    analysis.textContent = 'Gas is very cheap right now. This is an ideal time to send transactions. Typical ERC-20 transfers cost less than $0.01.';
+                } else if (gasGwei < 0.05) {
+                    statusCard.className = 'status-card moderate';
+                    status.textContent = '⚠️ Moderate';
+                    analysis.textContent = 'Gas is at moderate levels. OK for non-urgent transactions. If you can wait, prices might drop further.';
+                } else {
+                    statusCard.className = 'status-card expensive';
+                    status.textContent = '🛑 Wait';
+                    analysis.textContent = 'Gas is expensive right now. Consider waiting 15-30 minutes before transacting. Prices fluctuate significantly throughout the day.';
+                }
+                
+                // Add to history
+                history.unshift({
+                    time: new Date().toLocaleTimeString(),
+                    gas: gasGwei.toFixed(4),
+                    fee: '$' + feeUsd.toFixed(4)
+                });
+                
+                if (history.length > 5) history.pop();
+                
+                // Update history UI
+                document.getElementById('history').innerHTML = history.map(h => `
+                    <div class="history-item">
+                        <span class="history-time">${h.time}</span>
+                        <span class="history-gas">${h.gas} gwei (${h.fee})</span>
+                    </div>
+                `).join('');
+                
+            } catch (e) {
+                document.getElementById('status').textContent = 'Error';
+                document.getElementById('analysis').textContent = 'Failed to fetch gas data: ' + e.message;
+            }
+        }
+        
+        fetchData();
+        setInterval(fetchData, 60000);
+    </script>
+</body>
+</html>
