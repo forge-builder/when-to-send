@@ -65,6 +65,32 @@
         .gas-label { color: #666; font-size: 12px; margin-bottom: 5px; }
         .gas-value { font-size: 20px; font-weight: 600; }
         
+        .gauge {
+            height: 8px;
+            background: #1a1a2e;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .gauge-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease, background 0.5s ease;
+        }
+        
+        .gauge-fill.cheap { background: linear-gradient(90deg, #00ff88, #00cc66); }
+        .gauge-fill.moderate { background: linear-gradient(90deg, #ff9500, #ff6600); }
+        .gauge-fill.expensive { background: linear-gradient(90deg, #ff2d63, #cc0044); }
+        
+        .gauge-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
         .recommendation {
             background: #12121a;
             border-radius: 12px;
@@ -116,6 +142,12 @@
             font-size: 12px;
             margin-top: 40px;
         }
+        
+        @media (max-width: 480px) {
+            h1 { font-size: 28px; }
+            .big-status { font-size: 36px; }
+            .gas-info { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -139,6 +171,15 @@
                     <div class="gas-value" id="feeUsd">$--</div>
                 </div>
             </div>
+            
+            <div class="gauge-labels">
+                <span>Cheap (&lt;0.01)</span>
+                <span>Moderate (&lt;0.05)</span>
+                <span>Expensive</span>
+            </div>
+            <div class="gauge">
+                <div class="gauge-fill" id="gaugeFill" style="width: 50%"></div>
+            </div>
         </div>
         
         <div class="recommendation">
@@ -161,6 +202,22 @@
     <script>
         let history = [];
         let ethPrice = 0;
+        
+        function updateGauge(gasGwei) {
+            const gauge = document.getElementById('gaugeFill');
+            // Map gas to 0-100%: 0.001 = 0%, 0.1 = 100%
+            let percent = Math.min(100, (gasGwei / 0.1) * 100);
+            gauge.style.width = percent + '%';
+            
+            gauge.className = 'gauge-fill';
+            if (gasGwei < 0.01) {
+                gauge.classList.add('cheap');
+            } else if (gasGwei < 0.05) {
+                gauge.classList.add('moderate');
+            } else {
+                gauge.classList.add('expensive');
+            }
+        }
         
         async function fetchData() {
             try {
@@ -191,6 +248,9 @@
                 // Update UI
                 document.getElementById('gasPrice').textContent = gasGwei.toFixed(4) + ' gwei';
                 document.getElementById('feeUsd').textContent = '$' + feeUsd.toFixed(4);
+                
+                // Update gauge
+                updateGauge(gasGwei);
                 
                 // Determine status
                 const statusCard = document.getElementById('statusCard');
